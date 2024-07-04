@@ -1,34 +1,38 @@
 import cv2
 import socket
-import struct
 import pickle
+import os
+import numpy as np
 
-# Cấu hình địa chỉ và port
-server_ip = '10.68.169.113'  # Địa chỉ IP của laptop
-port = 9999
 
-# Khởi tạo socket
-client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((server_ip, port))
-connection = client_socket.makefile('wb')
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET,socket.SO_SNDBUF,1000000)
 
-# Mở camera
-camera = cv2.VideoCapture(0)
+# server_ip = "192.168.2.236"
+server_ip = "127.0.0.1"
+server_port = 6666
 
-try:
-    while camera.isOpened():
-        ret, frame = camera.read()
-        if not ret:
-            break
-        
-        # Mã hóa frame thành dạng chuỗi byte
-        data = pickle.dumps(frame)
-        # Đóng gói kích thước frame trước khi gửi
-        message_size = struct.pack("L", len(data))
-        # Gửi kích thước frame trước
-        client_socket.sendall(message_size + data)
 
-finally:
-    camera.release()
-    connection.close()
-    client_socket.close()
+cap = cv2.VideoCapture(0)
+# cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+# cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+
+while cap.isOpened():
+    
+	ret, img = cap.read()
+	# print(type(img))
+ 
+	# cv2.imshow('Img Client', img)
+ 
+	ret, buffer = cv2.imencode(".jpg", img, [int(cv2.IMWRITE_JPEG_QUALITY),30])
+ 
+	x_as_bytes = pickle.dumps(buffer)
+ 
+	s.sendto((x_as_bytes),(server_ip,server_port))
+ 
+	if cv2.waitKey(5) & 0xFF == 27:
+		break
+
+
+cv2.destroyAllWindows()
+cap.release()
